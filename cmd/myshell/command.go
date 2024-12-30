@@ -8,7 +8,9 @@ import (
 )
 
 type Command struct {
-	Args []string
+	Args   []string
+	Stdout *os.File
+	Stderr *os.File
 }
 
 func NewCommand() Command {
@@ -19,7 +21,9 @@ func NewCommand() Command {
 			continue
 		}
 		return Command{
-			Args: strings.Fields(input),
+			Args:   strings.Fields(input),
+			Stdout: os.Stdout,
+			Stderr: os.Stderr,
 		}
 	}
 }
