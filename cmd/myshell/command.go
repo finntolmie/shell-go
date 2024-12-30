@@ -14,7 +14,7 @@ func ExtractArgs(input string) []string {
 	singleQuote := false
 	doubleQuote := false
 	escaping := false
-	for _, c := range input {
+	for i, c := range input {
 		if escaping {
 			sb.WriteRune(c)
 			escaping = false
@@ -28,12 +28,24 @@ func ExtractArgs(input string) []string {
 			continue
 		}
 		switch {
-		case c == '\\' && !doubleQuote && !singleQuote:
-			escaping = true
 		case c == '\'' && !doubleQuote:
 			singleQuote = !singleQuote
 		case c == '"' && !singleQuote:
 			doubleQuote = !doubleQuote
+		case c == '\\' && doubleQuote:
+			// edge case im not handling it
+			if i == len(input)-1 {
+				sb.WriteRune(c)
+				continue
+			}
+			peek := input[i+1]
+			if peek == '\\' || peek == '"' || peek == '$' || peek == '\n' {
+				escaping = true
+			} else {
+				sb.WriteRune(c)
+			}
+		case c == '\\' && !doubleQuote && !singleQuote:
+			escaping = true
 		default:
 			sb.WriteRune(c)
 		}
