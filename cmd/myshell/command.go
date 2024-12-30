@@ -14,7 +14,7 @@ func ExtractArgs(input string) []string {
 	singleQuote := false
 	doubleQuote := false
 	for _, c := range input {
-		if !singleQuote && unicode.IsSpace(c) {
+		if !singleQuote && !doubleQuote && unicode.IsSpace(c) {
 			if sb.Len() > 0 {
 				args = append(args, sb.String())
 				sb.Reset()
