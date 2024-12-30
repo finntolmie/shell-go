@@ -14,10 +14,8 @@ func execute(cmd *Command) {
 	exe := exec.Command(cmd.Args[0], cmd.Args[1:]...)
 	exe.Stdout = cmd.Stdout
 	exe.Stderr = cmd.Stderr
-	err := exe.Run()
-	if err != nil {
-		fmt.Fprintln(cmd.Stderr, err.Error())
-	}
+	exe.Stdin = os.Stdin
+	exe.Run()
 }
 
 func attemptExecute(cmd *Command) bool {
@@ -41,6 +39,7 @@ func main() {
 	for repl {
 		fmt.Fprint(os.Stdout, "$ ")
 		cmd := NewCommand()
+		cmd.HandleRedirects()
 		if len(cmd.Args) == 0 {
 			continue
 		}
@@ -49,6 +48,7 @@ func main() {
 			continue
 		}
 		repl = attemptExecute(&cmd)
+		cmd.cleanupRedirects()
 	}
 	os.Exit(exitCode)
 }
