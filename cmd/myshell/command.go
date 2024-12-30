@@ -12,6 +12,7 @@ func ExtractArgs(input string) []string {
 	var args []string
 	var sb strings.Builder
 	singleQuote := false
+	doubleQuote := false
 	for _, c := range input {
 		if !singleQuote && unicode.IsSpace(c) {
 			if sb.Len() > 0 {
@@ -20,9 +21,11 @@ func ExtractArgs(input string) []string {
 			}
 			continue
 		}
-		switch c {
-		case '\'':
+		switch {
+		case c == '\'' && !doubleQuote:
 			singleQuote = !singleQuote
+		case c == '"' && !singleQuote:
+			doubleQuote = !doubleQuote
 		default:
 			sb.WriteRune(c)
 		}
