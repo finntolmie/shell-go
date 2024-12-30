@@ -35,6 +35,7 @@ func main() {
 		"echo": echoBuiltin,
 		"type": typeBuiltin,
 		"pwd":  pwdBuiltin,
+		"cd":   cdBuiltin,
 	}
 	var repl bool = true
 	for repl {

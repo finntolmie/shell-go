@@ -53,3 +53,20 @@ func pwdBuiltin(cmd *Command) bool {
 	}
 	return true
 }
+
+func cdBuiltin(cmd *Command) bool {
+	cdPath := cmd.Args[1]
+	if cdPath[0] == '~' {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Fprintln(cmd.Stderr, "Error: HOME not set")
+			return true
+		}
+		cdPath = home + cdPath[1:]
+	}
+	err := os.Chdir(cdPath)
+	if err != nil {
+		fmt.Fprintf(cmd.Stderr, "cd: %s: No such file or directory\n", cdPath)
+	}
+	return true
+}
