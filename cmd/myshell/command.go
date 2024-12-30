@@ -39,7 +39,7 @@ func (cmd *Command) HandleRedirects() {
 		redirectPath := cmd.Args[i+1]
 		i++
 
-		file, err := os.OpenFile(redirectPath, os.O_WRONLY|os.O_CREATE, 0644)
+		file, err := os.OpenFile(redirectPath, flags, 0644)
 		if err != nil {
 			fmt.Fprintf(cmd.Stderr, "Error: %s\n", err)
 			continue
