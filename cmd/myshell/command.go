@@ -5,7 +5,33 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode"
 )
+
+func ExtractArgs(input string) []string {
+	var args []string
+	var sb strings.Builder
+	singleQuote := false
+	for _, c := range input {
+		if !singleQuote && unicode.IsSpace(c) {
+			if sb.Len() > 0 {
+				args = append(args, sb.String())
+				sb.Reset()
+			}
+			continue
+		}
+		switch c {
+		case '\'':
+			singleQuote = !singleQuote
+		default:
+			sb.WriteRune(c)
+		}
+	}
+	if sb.Len() > 0 {
+		args = append(args, sb.String())
+	}
+	return args
+}
 
 type Command struct {
 	Args   []string
@@ -20,8 +46,9 @@ func NewCommand() Command {
 			fmt.Fprintf(os.Stderr, "Error reading user input: %s\n", err.Error())
 			continue
 		}
+		args := ExtractArgs(strings.TrimSpace(input))
 		return Command{
-			Args:   strings.Fields(input),
+			Args:   args,
 			Stdout: os.Stdout,
 			Stderr: os.Stderr,
 		}
