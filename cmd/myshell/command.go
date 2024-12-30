@@ -13,7 +13,13 @@ func ExtractArgs(input string) []string {
 	var sb strings.Builder
 	singleQuote := false
 	doubleQuote := false
+	escaping := false
 	for _, c := range input {
+		if escaping {
+			sb.WriteRune(c)
+			escaping = false
+			continue
+		}
 		if !singleQuote && !doubleQuote && unicode.IsSpace(c) {
 			if sb.Len() > 0 {
 				args = append(args, sb.String())
@@ -22,6 +28,8 @@ func ExtractArgs(input string) []string {
 			continue
 		}
 		switch {
+		case c == '\\' && !doubleQuote && !singleQuote:
+			escaping = true
 		case c == '\'' && !doubleQuote:
 			singleQuote = !singleQuote
 		case c == '"' && !singleQuote:
