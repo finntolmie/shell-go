@@ -19,10 +19,12 @@ func cleanInput() string {
 }
 
 func main() {
-	fmt.Fprint(os.Stdout, "$ ")
-	input := cleanInput()
-	switch input {
-	default:
-		fmt.Fprintf(os.Stderr, "%s: command not found\n", input)
+	for {
+		fmt.Fprint(os.Stdout, "$ ")
+		input := cleanInput()
+		switch input {
+		default:
+			fmt.Fprintf(os.Stderr, "%s: command not found\n", input)
+		}
 	}
 }
