@@ -10,6 +10,8 @@ import (
 
 var exitCode = 0
 
+var builtins map[string]func(*Command) bool
+
 func exitBuiltin(cmd *Command) bool {
 	var errno int = 0
 	var err error
@@ -30,9 +32,15 @@ func echoBuiltin(cmd *Command) bool {
 	return true
 }
 
-var builtins = map[string]func(*Command) bool{
-	"exit": exitBuiltin,
-	"echo": echoBuiltin,
+func typeBuiltin(cmd *Command) bool {
+	if len(cmd.Args) == 1 {
+		fmt.Fprintln(os.Stderr, "Error: expected argument")
+	} else if _, ok := builtins[cmd.Args[1]]; ok {
+		fmt.Printf("%s is a shell builtin\n", cmd.Args[1])
+	} else {
+		fmt.Fprintf(os.Stderr, "%s: not found\n", cmd.Args[1])
+	}
+	return true
 }
 
 type Command struct {
@@ -53,6 +61,11 @@ func NewCommand() Command {
 }
 
 func main() {
+	builtins = map[string]func(*Command) bool{
+		"exit": exitBuiltin,
+		"echo": echoBuiltin,
+		"type": typeBuiltin,
+	}
 	var repl bool = true
 	for repl {
 		fmt.Fprint(os.Stdout, "$ ")
