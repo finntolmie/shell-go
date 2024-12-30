@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -40,5 +41,15 @@ func typeBuiltin(cmd *Command) bool {
 		return true
 	}
 	fmt.Fprintf(cmd.Stderr, "%s: not found\n", cmd.Args[1])
+	return true
+}
+
+func pwdBuiltin(cmd *Command) bool {
+	pwd, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(cmd.Stderr, "Error: %s\n", err.Error())
+	} else {
+		fmt.Fprintln(cmd.Stdout, pwd)
+	}
 	return true
 }

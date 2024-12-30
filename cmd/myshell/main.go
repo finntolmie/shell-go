@@ -34,6 +34,7 @@ func main() {
 		"exit": exitBuiltin,
 		"echo": echoBuiltin,
 		"type": typeBuiltin,
+		"pwd":  pwdBuiltin,
 	}
 	var repl bool = true
 	for repl {
