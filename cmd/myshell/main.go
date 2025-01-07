@@ -15,7 +15,7 @@ func printLoop() bool {
 	}
 	defer cmd.Close()
 	if len(cmd.Args) == 0 {
-		return false
+		return true
 	}
 	return cmd.Execute()
 }
