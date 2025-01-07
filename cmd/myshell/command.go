@@ -12,10 +12,10 @@ import (
 )
 
 type Command struct {
-	raw    string
-	Args   []string
-	Stdout *os.File
-	Stderr *os.File
+	raw     string
+	Args    []string
+	Stdouts []*os.File
+	Stderrs []*os.File
 }
 
 func NewCommand() (*Command, error) {
@@ -27,8 +27,8 @@ func NewCommand() (*Command, error) {
 	}
 	cmd.raw = input
 	cmd.parseArgs()
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
 	cmd.handleRedirects()
 	return &cmd, nil
 }
@@ -99,12 +99,18 @@ func (cmd *Command) handleRedirects() {
 		}
 
 		if stdoutRedirect {
-			cmd.Stdout = file
+			cmd.Stdouts = append(cmd.Stdouts, file)
 		} else {
-			cmd.Stderr = file
+			cmd.Stderrs = append(cmd.Stderrs, file)
 		}
 	}
 	cmd.Args = newArgs
+	if len(cmd.Stdouts) == 0 {
+		cmd.Stdouts = append(cmd.Stdouts, os.Stdout)
+	}
+	if len(cmd.Stderrs) == 0 {
+		cmd.Stderrs = append(cmd.Stderrs, os.Stderr)
+	}
 }
 
 func (cmd *Command) parseArgs() {
@@ -154,19 +160,27 @@ func (cmd *Command) parseArgs() {
 }
 
 func (cmd *Command) WriteToOut(format string, a ...any) {
-	fmt.Fprintf(cmd.Stdout, format, a...)
+	for _, file := range cmd.Stdouts {
+		fmt.Fprintf(file, format, a...)
+	}
 }
 
 func (cmd *Command) WriteToErr(format string, a ...any) {
-	fmt.Fprintf(cmd.Stderr, format, a...)
+	for _, file := range cmd.Stderrs {
+		fmt.Fprintf(file, format, a...)
+	}
 }
 
 func (cmd *Command) Close() {
-	if cmd.Stdout != os.Stdout {
-		cmd.Stdout.Close()
+	for _, file := range cmd.Stdouts {
+		if file != os.Stdout {
+			file.Close()
+		}
 	}
-	if cmd.Stderr != os.Stderr {
-		cmd.Stderr.Close()
+	for _, file := range cmd.Stderrs {
+		if file != os.Stderr {
+			file.Close()
+		}
 	}
 }
 
