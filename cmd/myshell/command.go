@@ -27,8 +27,6 @@ func NewCommand() (*Command, error) {
 	}
 	cmd.raw = input
 	cmd.parseArgs()
-	// cmd.Stdout = os.Stdout
-	// cmd.Stderr = os.Stderr
 	cmd.handleRedirects()
 	return &cmd, nil
 }
@@ -46,12 +44,18 @@ func (cmd *Command) Execute() bool {
 }
 
 func (cmd *Command) tryExecute() {
+	var wg sync.WaitGroup
 	exe := exec.Command(cmd.Args[0], cmd.Args[1:]...)
-	stdoutPipe, _ := exe.StdoutPipe()
-	stderrPipe, _ := exe.StderrPipe()
 	exe.Stdin = os.Stdin
+	stdoutPipe, err := exe.StdoutPipe()
+	if err != nil {
+		return
+	}
+	stderrPipe, err := exe.StderrPipe()
+	if err != nil {
+		return
+	}
 	exe.Start()
-	wg := sync.WaitGroup{}
 	wg.Add(2)
 	go streamOutput(&wg, stdoutPipe, cmd.WriteToOut)
 	go streamOutput(&wg, stderrPipe, cmd.WriteToErr)
@@ -59,6 +63,7 @@ func (cmd *Command) tryExecute() {
 }
 
 func streamOutput(wg *sync.WaitGroup, pipe io.ReadCloser, writeFunc func(format string, a ...interface{})) {
+	defer wg.Done()
 	scanner := bufio.NewScanner(pipe)
 	for scanner.Scan() {
 		writeFunc("%s\n", scanner.Text())
@@ -66,7 +71,6 @@ func streamOutput(wg *sync.WaitGroup, pipe io.ReadCloser, writeFunc func(format 
 	if err := scanner.Err(); err != nil {
 		writeFunc("Error reading output: %s\n", err.Error())
 	}
-	wg.Done()
 }
 
 func (cmd *Command) handleRedirects() {
