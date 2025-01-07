@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -41,22 +40,22 @@ func echoBuiltin(cmd *Command) bool {
 				elements = append(elements, arg)
 			}
 		}
-		fmt.Fprintf(cmd.Stdout, "%s\n", strings.Join(elements, " "))
+		cmd.WriteToOut("%s\n", strings.Join(elements, " "))
 	} else {
-		fmt.Fprintf(cmd.Stdout, "\n")
+		cmd.WriteToOut("\n")
 	}
 	return true
 }
 
 func typeBuiltin(cmd *Command) bool {
 	if len(cmd.Args) == 1 {
-		fmt.Fprintln(cmd.Stderr, "Error: expected argument")
+		cmd.WriteToErr("Error: expected argument")
 	} else if _, ok := GetBuiltins()[cmd.Args[1]]; ok {
-		fmt.Fprintf(cmd.Stdout, "%s is a shell builtin\n", cmd.Args[1])
-	} else if fp, err := exec.LookPath(cmd.Args[1]); err == nil {
-		fmt.Fprintf(cmd.Stdout, "%s is %s\n", cmd.Args[1], fp)
+		cmd.WriteToOut("%s is a shell builtin\n", cmd.Args[1])
+	} else if fp, err := exec.LookPath(cmd.Args[1]); err != nil {
+		cmd.WriteToErr("%s: not found\n", cmd.Args[1])
 	} else {
-		fmt.Fprintf(cmd.Stderr, "%s: not found\n", cmd.Args[1])
+		cmd.WriteToOut("%s is %s\n", cmd.Args[1], fp)
 	}
 	return true
 }
@@ -64,9 +63,9 @@ func typeBuiltin(cmd *Command) bool {
 func pwdBuiltin(cmd *Command) bool {
 	pwd, err := os.Getwd()
 	if err != nil {
-		fmt.Fprintf(cmd.Stderr, "Error: %s\n", err.Error())
+		cmd.WriteToErr("Error: %s\n", err.Error())
 	} else {
-		fmt.Fprintln(cmd.Stdout, pwd)
+		cmd.WriteToOut("%s\n", pwd)
 	}
 	return true
 }
@@ -76,14 +75,14 @@ func cdBuiltin(cmd *Command) bool {
 	if cdPath[0] == '~' {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Fprintln(cmd.Stderr, "Error: HOME not set")
+			cmd.WriteToErr("Error: HOME not set")
 			return true
 		}
 		cdPath = home + cdPath[1:]
 	}
 	err := os.Chdir(cdPath)
 	if err != nil {
-		fmt.Fprintf(cmd.Stderr, "cd: %s: No such file or directory\n", cdPath)
+		cmd.WriteToErr("cd: %s: No such file or directory\n", cdPath)
 	}
 	return true
 }

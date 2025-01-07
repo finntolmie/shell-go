@@ -3,9 +3,11 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"unicode"
 )
 
@@ -36,7 +38,7 @@ func (cmd *Command) Execute() bool {
 		return builtin(cmd)
 	}
 	if _, err := exec.LookPath(cmd.Args[0]); err != nil {
-		fmt.Fprintf(cmd.Stderr, "%s: command not found\n", cmd.Args[0])
+		cmd.WriteToErr("%s: command not found\n", cmd.Args[0])
 	} else {
 		cmd.tryExecute()
 	}
@@ -45,11 +47,26 @@ func (cmd *Command) Execute() bool {
 
 func (cmd *Command) tryExecute() {
 	exe := exec.Command(cmd.Args[0], cmd.Args[1:]...)
-	exe.Stdout = cmd.Stdout
-	exe.Stderr = cmd.Stderr
+	stdoutPipe, _ := exe.StdoutPipe()
+	stderrPipe, _ := exe.StderrPipe()
 	exe.Stdin = os.Stdin
-	exe.Run()
-	exe.Output()
+	exe.Start()
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go streamOutput(&wg, stdoutPipe, cmd.WriteToOut)
+	go streamOutput(&wg, stderrPipe, cmd.WriteToErr)
+	wg.Wait()
+}
+
+func streamOutput(wg *sync.WaitGroup, pipe io.ReadCloser, writeFunc func(format string, a ...interface{})) {
+	scanner := bufio.NewScanner(pipe)
+	for scanner.Scan() {
+		writeFunc("%s\n", scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		writeFunc("Error reading output: %s\n", err.Error())
+	}
+	wg.Done()
 }
 
 func (cmd *Command) handleRedirects() {
@@ -134,6 +151,14 @@ func (cmd *Command) parseArgs() {
 	if sb.Len() > 0 {
 		cmd.Args = append(cmd.Args, sb.String())
 	}
+}
+
+func (cmd *Command) WriteToOut(format string, a ...any) {
+	fmt.Fprintf(cmd.Stdout, format, a...)
+}
+
+func (cmd *Command) WriteToErr(format string, a ...any) {
+	fmt.Fprintf(cmd.Stderr, format, a...)
 }
 
 func (cmd *Command) Close() {
