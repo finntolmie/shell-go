@@ -4,19 +4,55 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"unicode"
 )
 
-func isStdoutRedirect(arg string) bool {
-	return arg == ">>" || arg == ">" || arg == "1>" || arg == "1>>"
+type Command struct {
+	raw    string
+	Args   []string
+	Stdout *os.File
+	Stderr *os.File
 }
 
-func isStderrRedirect(arg string) bool {
-	return arg == "2>" || arg == "2>>"
+func NewCommand() (*Command, error) {
+	var cmd Command
+	input, err := bufio.NewReader(os.Stdin).ReadString('\n')
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading user input: %s\n", err.Error())
+		return nil, err
+	}
+	cmd.raw = input
+	cmd.parseArgs()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.handleRedirects()
+	return &cmd, nil
 }
 
-func (cmd *Command) HandleRedirects() {
+func (cmd *Command) Execute() bool {
+	if builtin, ok := GetBuiltins()[cmd.Args[0]]; ok {
+		return builtin(cmd)
+	}
+	if _, err := exec.LookPath(cmd.Args[0]); err != nil {
+		fmt.Fprintf(cmd.Stderr, "%s: command not found\n", cmd.Args[0])
+	} else {
+		cmd.tryExecute()
+	}
+	return true
+}
+
+func (cmd *Command) tryExecute() {
+	exe := exec.Command(cmd.Args[0], cmd.Args[1:]...)
+	exe.Stdout = cmd.Stdout
+	exe.Stderr = cmd.Stderr
+	exe.Stdin = os.Stdin
+	exe.Run()
+	exe.Output()
+}
+
+func (cmd *Command) handleRedirects() {
 	newArgs := make([]string, 0, len(cmd.Args))
 	for i := 0; i < len(cmd.Args); i++ {
 		arg := cmd.Args[i]
@@ -41,7 +77,7 @@ func (cmd *Command) HandleRedirects() {
 
 		file, err := os.OpenFile(redirectPath, flags, 0644)
 		if err != nil {
-			fmt.Fprintf(cmd.Stderr, "Error: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 			continue
 		}
 
@@ -54,22 +90,12 @@ func (cmd *Command) HandleRedirects() {
 	cmd.Args = newArgs
 }
 
-func (cmd *Command) cleanupRedirects() {
-	if cmd.Stdout != os.Stdout {
-		cmd.Stdout.Close()
-	}
-	if cmd.Stderr != os.Stderr {
-		cmd.Stderr.Close()
-	}
-}
-
-func ExtractArgs(input string) []string {
-	var args []string
+func (cmd *Command) parseArgs() {
 	var sb strings.Builder
 	singleQuote := false
 	doubleQuote := false
 	escaping := false
-	for i, c := range input {
+	for i, c := range cmd.raw {
 		if escaping {
 			sb.WriteRune(c)
 			escaping = false
@@ -77,7 +103,7 @@ func ExtractArgs(input string) []string {
 		}
 		if !singleQuote && !doubleQuote && unicode.IsSpace(c) {
 			if sb.Len() > 0 {
-				args = append(args, sb.String())
+				cmd.Args = append(cmd.Args, sb.String())
 				sb.Reset()
 			}
 			continue
@@ -89,11 +115,11 @@ func ExtractArgs(input string) []string {
 			doubleQuote = !doubleQuote
 		case c == '\\' && doubleQuote:
 			// edge case im not handling it
-			if i == len(input)-1 {
+			if i == len(cmd.raw)-1 {
 				sb.WriteRune(c)
 				continue
 			}
-			peek := input[i+1]
+			peek := cmd.raw[i+1]
 			if peek == '\\' || peek == '"' || peek == '$' || peek == '\n' {
 				escaping = true
 			} else {
@@ -106,29 +132,23 @@ func ExtractArgs(input string) []string {
 		}
 	}
 	if sb.Len() > 0 {
-		args = append(args, sb.String())
+		cmd.Args = append(cmd.Args, sb.String())
 	}
-	return args
 }
 
-type Command struct {
-	Args   []string
-	Stdout *os.File
-	Stderr *os.File
+func (cmd *Command) Close() {
+	if cmd.Stdout != os.Stdout {
+		cmd.Stdout.Close()
+	}
+	if cmd.Stderr != os.Stderr {
+		cmd.Stderr.Close()
+	}
 }
 
-func NewCommand() Command {
-	for {
-		input, err := bufio.NewReader(os.Stdin).ReadString('\n')
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error reading user input: %s\n", err.Error())
-			continue
-		}
-		args := ExtractArgs(strings.TrimSpace(input))
-		return Command{
-			Args:   args,
-			Stdout: os.Stdout,
-			Stderr: os.Stderr,
-		}
-	}
+func isStdoutRedirect(arg string) bool {
+	return arg == ">>" || arg == ">" || arg == "1>" || arg == "1>>"
+}
+
+func isStderrRedirect(arg string) bool {
+	return arg == "2>" || arg == "2>>"
 }

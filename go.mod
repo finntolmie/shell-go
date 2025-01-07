@@ -6,6 +6,6 @@
 //
 // DON'T EDIT THIS!
 
-module github.com/codecrafters-io/shell-starter-go
+module github.com/finntolmie/myshell
 
 go 1.22
